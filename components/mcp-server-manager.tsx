@@ -8,7 +8,13 @@ import {
     KeyValuePair
 } from "@/lib/context/mcp-context";
 import { Button } from "@/components/ui/button";
-import { Trash2, PlusCircle, ChevronDown, Bug, ExternalLink, RefreshCcw, Power, PowerOff, Server, Copy, Edit, Sliders, Key, Globe, Code, Smile, Frown } from "lucide-react";
+import { 
+    Trash2, PlusCircle, ChevronDown, Bug, ExternalLink, 
+    RefreshCcw, Power, PowerOff, Server as ServerIcon, 
+    Copy, Edit, Sliders, Key, Globe, Code, Smile, 
+    Frown, CheckCircle, X, Terminal, Cog, Eye, EyeOff, 
+    Plus
+} from "lucide-react";
 import {
     Card,
     CardContent,
@@ -48,6 +54,12 @@ import {
 import { APIKeyModal } from "./api-key-modal";
 import { ServerConfigModal } from "./server-config-modal";
 import { ConnectionStatusIcon } from "./connection-status-icon";
+import {
+    Accordion,
+    AccordionContent,
+    AccordionItem,
+    AccordionTrigger
+} from "./ui/accordion";
 
 // Helper function to get display URL for server
 const getServerDisplayUrl = (server: MCPServer): string => {
