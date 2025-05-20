@@ -26,6 +26,32 @@ export const supabase = createClient(
   }
 );
 
+// Check if Supabase environment variables are properly set
+export function checkSupabaseEnv(): { isValid: boolean; issues: string[] } {
+  const issues: string[] = [];
+  let isValid = true;
+
+  // Check URL
+  if (!env.SUPABASE_URL) {
+    issues.push("SUPABASE_URL is not set");
+    isValid = false;
+  } else if (!env.SUPABASE_URL.includes('supabase.co')) {
+    issues.push(`SUPABASE_URL appears invalid: ${env.SUPABASE_URL}`);
+    isValid = false;
+  }
+
+  // Check API Key
+  if (!env.SUPABASE_ANON_KEY) {
+    issues.push("SUPABASE_ANON_KEY is not set");
+    isValid = false;
+  } else if (env.SUPABASE_ANON_KEY === 'your-supabase-anon-key' || env.SUPABASE_ANON_KEY.length < 20) {
+    issues.push("SUPABASE_ANON_KEY appears to be a placeholder or invalid");
+    isValid = false;
+  }
+
+  return { isValid, issues };
+}
+
 // Helper function to get database connection status with retries
 export async function checkSupabaseConnection(retries = 2): Promise<boolean> {
   try {

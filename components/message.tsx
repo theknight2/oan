@@ -36,26 +36,51 @@ export function ReasoningMessagePart({
   }, [isReasoning, memoizedSetIsExpanded]);
 
   return (
-    <div className="flex flex-col mb-2">
+    <div className="flex flex-col mb-2 group">
       {isReasoning ? (
-        <div className="flex items-center gap-2.5 rounded-full py-1.5 px-3 bg-muted border border-border w-fit">
-          <div className="h-3.5 w-3.5">
+        <div className={cn(
+          "flex items-center gap-2.5 rounded-full py-1.5 px-3",
+          "bg-indigo-50/50 dark:bg-indigo-900/10 text-indigo-700 dark:text-indigo-300",
+          "border border-indigo-200/50 dark:border-indigo-700/20 w-fit"
+        )}>
+          <div className="animate-spin h-3.5 w-3.5">
             <SpinnerIcon />
           </div>
-          <div className="text-xs font-medium">Thinking...</div>
+          <div className="text-xs font-medium tracking-tight italic thinking-glow">Thinking...</div>
         </div>
       ) : (
         <button 
           onClick={() => setIsExpanded(!isExpanded)}
-          className="flex items-center justify-between w-full rounded-md py-2 px-3 mb-0.5 bg-muted border border-border"
+          className={cn(
+            "flex items-center justify-between w-full",
+            "rounded-md py-2 px-3 mb-0.5",
+            "bg-muted/50 border border-border/60 hover:border-border/80",
+            "transition-all duration-150 cursor-pointer",
+            isExpanded ? "bg-muted border-primary/20" : ""
+          )}
         >
           <div className="flex items-center gap-2.5">
-            <LightbulbIcon className="h-4 w-4" />
-            <div className="text-sm font-medium">
-              Reasoning {isExpanded ? "(hide)" : "(view)"}
+            <div className={cn(
+              "flex items-center justify-center w-6 h-6 rounded-full",
+              "bg-amber-50 dark:bg-amber-900/20",
+              "text-amber-600 dark:text-amber-400 ring-1 ring-amber-200 dark:ring-amber-700/30",
+            )}>
+              <LightbulbIcon className="h-3.5 w-3.5" />
+            </div>
+            <div className="text-sm font-medium text-foreground flex items-center gap-1.5">
+              <span className="thinking-glow">Reasoning</span>
+              <span className="text-xs text-muted-foreground font-normal">
+                (click to {isExpanded ? "hide" : "view"})
+              </span>
             </div>
           </div>
-          <div>
+          <div className={cn(
+            "flex items-center justify-center",
+            "rounded-full p-0.5 w-5 h-5",
+            "text-muted-foreground hover:text-foreground",
+            "bg-background/80 border border-border/50",
+            "transition-colors",
+          )}>
             {isExpanded ? (
               <ChevronDownIcon className="h-3 w-3" />
             ) : (
@@ -66,16 +91,26 @@ export function ReasoningMessagePart({
       )}
 
       {isExpanded && (
-        <div className="text-sm text-muted-foreground pl-3 ml-1 mt-1 border-l border-border">
-          <div className="text-xs pl-1 mb-2">
+        <div
+          className={cn(
+            "text-sm text-muted-foreground flex flex-col gap-2",
+            "pl-3.5 ml-0.5 mt-1",
+            "border-l border-amber-200/50 dark:border-amber-700/30"
+          )}
+        >
+          <div className="text-xs text-muted-foreground/70 pl-1 font-medium">
             The assistant&apos;s thought process:
           </div>
           {part.details.map((detail, detailIndex) =>
             detail.type === "text" ? (
-              <div key={detailIndex} className="px-2 py-1.5 mb-2 bg-background border border-border rounded">
-                <Markdown>{detail.text}</Markdown>
+              <div key={detailIndex} className="px-2 py-1.5 bg-muted/10 rounded-md border border-border/30">
+                <div className="italic">
+                  <Markdown>{detail.text}</Markdown>
+                </div>
               </div>
-            ) : null
+            ) : (
+              "<redacted>"
+            ),
           )}
         </div>
       )}

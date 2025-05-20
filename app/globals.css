@@ -467,39 +467,39 @@ input, textarea {
   padding-left: 1em;
 }
 
-/* Home page animations - SIMPLIFIED */
+/* Home page animations */
 .hover-lift {
-  transition: none;
+  transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
 }
 
 .hover-lift:hover {
-  transform: none;
-  box-shadow: none;
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
 
 .stagger-animation > * {
-  opacity: 1;
-  transform: none;
-  animation: none;
+  opacity: 0;
+  transform: translateY(10px);
+  animation: fadeInUp 0.6s ease forwards;
 }
 
-.stagger-animation > *:nth-child(1) { animation-delay: 0; }
-.stagger-animation > *:nth-child(2) { animation-delay: 0; }
-.stagger-animation > *:nth-child(3) { animation-delay: 0; }
-.stagger-animation > *:nth-child(4) { animation-delay: 0; }
+.stagger-animation > *:nth-child(1) { animation-delay: 0.1s; }
+.stagger-animation > *:nth-child(2) { animation-delay: 0.2s; }
+.stagger-animation > *:nth-child(3) { animation-delay: 0.3s; }
+.stagger-animation > *:nth-child(4) { animation-delay: 0.4s; }
 
 @keyframes fadeInUp {
   from {
-    opacity: 1;
-    transform: none;
+    opacity: 0;
+    transform: translateY(10px);
   }
   to {
     opacity: 1;
-    transform: none;
+    transform: translateY(0);
   }
 }
 
-/* Gradient text - SIMPLIFIED */
+/* Gradient text */
 .gradient-text {
   color: #4facfe;
   animation: none;
@@ -526,6 +526,6 @@ input, textarea {
     background-position: 0% 50%;
   }
   100% {
-    background-position: 0% 50%;
+    background-position: 100% 50%;
   }
 }

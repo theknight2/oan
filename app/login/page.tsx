@@ -7,24 +7,46 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import Image from "next/image";
-import { checkSupabaseConnection } from "@/lib/supabase";
+import { checkSupabaseConnection, checkSupabaseEnv } from "@/lib/supabase";
+import { env } from "@/lib/env";
 
 export default function LoginPage() {
   const router = useRouter();
   const [userId, setUserId] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<string | null>(null);
+  const [envInfo, setEnvInfo] = useState<string>("Loading...");
+  const [envIssues, setEnvIssues] = useState<string[]>([]);
 
   // Check Supabase connection on mount
   useEffect(() => {
     const checkConnection = async () => {
-      const connected = await checkSupabaseConnection();
-      setConnectionStatus(connected ? "connected" : "failed");
-      
-      // If already logged in, redirect to home
-      const currentUserId = getUserId();
-      if (currentUserId && connected) {
-        router.push("/home");
+      try {
+        // Check environment variables
+        const { isValid, issues } = checkSupabaseEnv();
+        setEnvIssues(issues);
+        
+        // Show environment info (omitting sensitive values)
+        const envSummary = `
+          URL: ${env.SUPABASE_URL ? "✓ Set" : "✗ Missing"}
+          Key: ${env.SUPABASE_ANON_KEY ? "✓ Set (length: " + env.SUPABASE_ANON_KEY.length + ")" : "✗ Missing"}
+          NODE_ENV: ${env.NODE_ENV}
+          APP_URL: ${env.APP_URL}
+        `;
+        setEnvInfo(envSummary);
+
+        // Check connection
+        const connected = await checkSupabaseConnection();
+        setConnectionStatus(connected ? "connected" : "failed");
+        
+        // If already logged in, redirect to home
+        const currentUserId = getUserId();
+        if (currentUserId && connected) {
+          router.push("/home");
+        }
+      } catch (error) {
+        console.error("Connection check error:", error);
+        setConnectionStatus("error");
       }
     };
     
@@ -67,6 +89,7 @@ export default function LoginPage() {
   const connectionStatusDisplay = () => {
     if (connectionStatus === null) return "Checking connection...";
     if (connectionStatus === "connected") return "Database connected";
+    if (connectionStatus === "error") return "Connection error occurred";
     return "Database connection failed - using local storage only";
   };
 
@@ -110,6 +133,24 @@ export default function LoginPage() {
           <div className="text-center text-xs text-muted-foreground mt-4">
             <p>First time? Just enter any ID you want to use.</p>
             <p className="mt-2">Status: {connectionStatusDisplay()}</p>
+
+            {envIssues.length > 0 && (
+              <div className="mt-2 p-2 bg-red-500/10 rounded text-left">
+                <p className="font-semibold">Environment Issues:</p>
+                <ul className="list-disc pl-4">
+                  {envIssues.map((issue, i) => (
+                    <li key={i}>{issue}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            
+            <details className="mt-2 text-left">
+              <summary className="cursor-pointer">Environment Info (Debug)</summary>
+              <pre className="text-xs p-2 bg-black/10 rounded mt-1 whitespace-pre-wrap">
+                {envInfo}
+              </pre>
+            </details>
           </div>
         </form>
       </div>
