@@ -1,5 +1,17 @@
 {
-  "buildCommand": "next build --no-lint",
+  "buildCommand": "next build",
   "devCommand": "next dev --turbopack",
-  "installCommand": "npm install"
+  "installCommand": "npm install",
+  "framework": "nextjs",
+  "outputDirectory": ".next",
+  "regions": ["iad1"],
+  "ignoreCommand": "if [ -f .vercelignore ]; then echo 'Using .vercelignore'; else echo ''; fi",
+  "env": {
+    "NEXT_PUBLIC_APP_URL": "${DEPLOYMENT_URL}"
+  },
+  "git": {
+    "deploymentEnabled": {
+      "main": true
+    }
+  }
 }

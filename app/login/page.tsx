@@ -1,19 +1,37 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { getUserId, updateUserId } from "@/lib/user-id";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import Image from "next/image";
+import { checkSupabaseConnection } from "@/lib/supabase";
 
 export default function LoginPage() {
   const router = useRouter();
   const [userId, setUserId] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<string | null>(null);
 
-  const handleLogin = (e: React.FormEvent) => {
+  // Check Supabase connection on mount
+  useEffect(() => {
+    const checkConnection = async () => {
+      const connected = await checkSupabaseConnection();
+      setConnectionStatus(connected ? "connected" : "failed");
+      
+      // If already logged in, redirect to home
+      const currentUserId = getUserId();
+      if (currentUserId && connected) {
+        router.push("/home");
+      }
+    };
+    
+    checkConnection();
+  }, [router]);
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!userId.trim()) {
@@ -22,13 +40,34 @@ export default function LoginPage() {
     }
     
     setIsLoading(true);
-    updateUserId(userId.trim());
-    
-    // Simulate loading
-    setTimeout(() => {
+
+    try {
+      // Check connection again before proceeding
+      const connected = await checkSupabaseConnection();
+      
+      if (!connected) {
+        toast.error("Cannot connect to database. Using local mode only.");
+        // Continue anyway after warning
+      }
+      
+      updateUserId(userId.trim());
+      
+      setTimeout(() => {
+        setIsLoading(false);
+        router.push("/home");
+      }, 1000);
+    } catch (error) {
+      console.error("Login error:", error);
+      toast.error("An error occurred during login");
       setIsLoading(false);
-      router.push("/home");
-    }, 1000);
+    }
+  };
+
+  // Debug info
+  const connectionStatusDisplay = () => {
+    if (connectionStatus === null) return "Checking connection...";
+    if (connectionStatus === "connected") return "Database connected";
+    return "Database connection failed - using local storage only";
   };
 
   return (
@@ -70,6 +109,7 @@ export default function LoginPage() {
           
           <div className="text-center text-xs text-muted-foreground mt-4">
             <p>First time? Just enter any ID you want to use.</p>
+            <p className="mt-2">Status: {connectionStatusDisplay()}</p>
           </div>
         </form>
       </div>

@@ -82,8 +82,8 @@ interface MCPContextType {
 
 const MCPContext = createContext<MCPContextType | undefined>(undefined);
 
-// Helper function to wait for server readiness
-async function waitForServerReady(url: string, maxAttempts = 20, timeout = 3000) {
+// Helper function to wait for server readiness with fewer attempts and longer timeouts
+async function waitForServerReady(url: string, maxAttempts = 5, timeout = 5000) {
   console.log(`Checking server readiness at ${url}, will try ${maxAttempts} times`);
   for (let i = 0; i < maxAttempts; i++) {
     try {
@@ -102,8 +102,8 @@ async function waitForServerReady(url: string, maxAttempts = 20, timeout = 3000)
       console.log(`Server connection failed (attempt ${i + 1}): ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
     
-    // Wait before next attempt with progressive backoff
-    const waitTime = Math.min(1000 * (i + 1), 5000); // Start with 1s, increase each time, max 5s
+    // Wait before next attempt with longer intervals
+    const waitTime = 3000 + (i * 2000); // Start with 3s, increase by 2s each time
     console.log(`Waiting ${waitTime}ms before next attempt`);
     await new Promise(resolve => setTimeout(resolve, waitTime));
   }
@@ -125,8 +125,6 @@ export function MCPProvider({ children }: { children: React.ReactNode }) {
   // Create a ref to track active servers and avoid unnecessary re-renders
   const activeServersRef = useRef<Record<string, boolean>>({});
 
-  // We'll initialize the default MCP server after defining needed functions
-  
   // Helper to get a server by ID
   const getServerById = (serverId: string): MCPServer | undefined => {
     return mcpServers.find(server => server.id === serverId);
@@ -164,19 +162,28 @@ export function MCPProvider({ children }: { children: React.ReactNode }) {
     });
   };
   
-  // Get active servers formatted for API usage
+  // Get active servers formatted for API usage - with memory optimization
   const getActiveServersForApi = (): MCPServerApi[] => {
-    return selectedMcpServers
-      .map(id => getServerById(id))
-      .filter((server): server is MCPServer => !!server && server.status === 'connected')
-      .map(server => ({
+    const result: MCPServerApi[] = [];
+    
+    for (const id of selectedMcpServers) {
+      const server = getServerById(id);
+      if (!server || server.status !== 'connected') continue;
+      
+      result.push({
         type: 'sse',
         url: server.type === 'stdio' && server.sandboxUrl ? server.sandboxUrl : server.url,
         headers: server.headers
-      }));
+      });
+    }
+    
+    return result;
   };
   
-  // Start a server
+  // Memoize the API servers for better performance
+  const mcpServersForApi = React.useMemo(() => getActiveServersForApi(), [mcpServers, selectedMcpServers]);
+  
+  // Start a server with optimized connection checking
   const startServer = async (serverId: string): Promise<boolean> => {
     const server = getServerById(serverId);
     if (!server) return false;
@@ -249,75 +256,70 @@ export function MCPProvider({ children }: { children: React.ReactNode }) {
         }
       }
       
-      // If we get here, something is misconfigured
+      // Invalid server config
       updateServerStatus(serverId, 'error', 'Invalid server configuration');
       return false;
     } catch (error) {
-      // Handle any unexpected errors
       console.error(`Error starting server ${serverId}:`, error);
-      updateServerStatus(serverId, 'error', 
-        `Error: ${error instanceof Error ? error.message : String(error)}`);
+      updateServerStatus(serverId, 'error', error instanceof Error ? error.message : 'Unknown error');
       return false;
     }
   };
   
-  // Stop a server
   const stopServer = async (serverId: string): Promise<boolean> => {
     const server = getServerById(serverId);
     if (!server) return false;
     
     try {
-      // For stdio servers with sandbox, stop the sandbox
+      // For stdio servers with sandboxes, stop the sandbox
       if (server.type === 'stdio' && server.sandboxUrl) {
-        try {
-          await stopSandbox(serverId);
-          console.log(`Stopped sandbox for server ${serverId}`);
-          
-          // Mark as not active
-          delete activeServersRef.current[serverId];
-        } catch (error) {
-          console.error(`Error stopping sandbox for server ${serverId}:`, error);
-        }
+        await stopSandbox(serverId);
+        // Clear sandbox URL
+        updateServerSandboxUrl(serverId, '');
       }
       
-      // Update server status
+      // Mark as disconnected
       updateServerStatus(serverId, 'disconnected');
+      
+      // Remove from active servers
+      if (activeServersRef.current[serverId]) {
+        delete activeServersRef.current[serverId];
+      }
+      
       return true;
     } catch (error) {
       console.error(`Error stopping server ${serverId}:`, error);
+      updateServerStatus(serverId, 'error', error instanceof Error ? error.message : 'Unknown error');
       return false;
     }
   };
   
-  // Calculate mcpServersForApi based on current state
-  const mcpServersForApi = getActiveServersForApi();
-  
-  // Initialize the default MCP server on component mount
+  // Auto-connect the default server once on mount
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const defaultServer = mcpServers.find(server => server.id === "default-heurist-mcp");
-      if (defaultServer && defaultServer.status !== 'connected') {
-        startServer("default-heurist-mcp").then(success => {
-          console.log(`Default MCP server initialization ${success ? 'successful' : 'failed'}`);
-        });
+    if (selectedMcpServers.includes('default-heurist-mcp')) {
+      const defaultServer = getServerById('default-heurist-mcp');
+      if (defaultServer && defaultServer.status !== 'connected' && defaultServer.status !== 'connecting') {
+        startServer('default-heurist-mcp').catch(console.error);
       }
     }
-  }, [mcpServers, startServer]);
-
+    // Only run once on mount - avoid dependency array with selected servers to prevent reconnection
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  
+  const contextValue = {
+    mcpServers,
+    setMcpServers,
+    selectedMcpServers,
+    setSelectedMcpServers,
+    mcpServersForApi,
+    startServer,
+    stopServer,
+    updateServerStatus,
+    getActiveServersForApi,
+  };
+  
   return (
-    <MCPContext.Provider 
-      value={{ 
-        mcpServers, 
-        setMcpServers, 
-        selectedMcpServers, 
-        setSelectedMcpServers,
-        mcpServersForApi,
-        startServer,
-        stopServer,
-        updateServerStatus,
-        getActiveServersForApi
-      }}
-    >
+    <MCPContext.Provider value={contextValue}>
       {children}
     </MCPContext.Provider>
   );
@@ -326,7 +328,7 @@ export function MCPProvider({ children }: { children: React.ReactNode }) {
 export function useMCP() {
   const context = useContext(MCPContext);
   if (context === undefined) {
-    throw new Error("useMCP must be used within an MCPProvider");
+    throw new Error("useMCP must be used within a MCPProvider");
   }
   return context;
 } 
